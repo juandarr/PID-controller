@@ -34,9 +34,8 @@ int main() {
   uWS::Hub h;
 
   PID pid;
-  
   //Initialize the pid variable.
-  pid.Init(0.15, 0.003,7.0);
+  pid.Init(0.15, 0.003,7.0, 400);
 
   h.onMessage([&pid](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, 
                      uWS::OpCode opCode) {
@@ -47,40 +46,23 @@ int main() {
       auto s = hasData(string(data).substr(0, length));
 
       if (s != "") {
-        auto j = json::parse(s);
+        json j = json::parse(s);
 
         string event = j[0].get<string>();
 
         if (event == "telemetry") {
-          // j[1] is the data JSON object
-          double cte = std::stod(j[1]["cte"].get<string>());
-          double speed = std::stod(j[1]["speed"].get<string>());
-          double angle = std::stod(j[1]["steering_angle"].get<string>());
-          double steer_value;
-          /**
-           * Calculate steering value here, remember the steering value is
-           *   [-1, 1].
-           * NOTE: Feel free to play around with the throttle and speed.
-           *   Maybe use another PID controller to control the speed!
-           */
-          pid.UpdateError(cte);
-          steer_value = pid.TotalError();
           
-          // DEBUG
-          std::cout << "CTE: " << cte << " Steering Value: " << steer_value 
-                    << std::endl;
-
-          double max_speed = 30;
-          double throttle;
-          if (speed < max_speed) throttle = 0.5;
-          else throttle = 0.0;
-
-          json msgJson;
-          msgJson["steering_angle"] = steer_value;
-          msgJson["throttle"] = throttle;
-          auto msg = "42[\"steer\"," + msgJson.dump() + "]";
-          std::cout << msg << std::endl;
-          ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
+          
+          if (pid.getStepCounter() < pid.getMaxSteps()) {
+            string msg = pid.runProcess(j);
+            ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
+          } else {
+            pid.Init(0.15, 0.003,7.0,pid.getMaxSteps());
+            string reset_msg = "42[\"reset\",{}]";
+            ws.send(reset_msg.data(), reset_msg.length(), uWS::OpCode::TEXT); 
+          }
+          
+          std::cout << "Number of steps: " << pid.step_counter << std::endl;
         }  // end "telemetry" if
       } else {
         // Manual driving
