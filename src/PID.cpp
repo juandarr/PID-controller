@@ -1,4 +1,8 @@
 #include "PID.h"
+#include <numeric>
+#include <vector>
+
+using std::vector;
 
 /**
  * Complete the PID class. You may add any additional desired functions.
@@ -34,4 +38,42 @@ double PID::TotalError() {
    */
   double total_error = p_error + d_error + i_error;
   return total_error;  // TODO: Add your total error calc here!
+}
+
+vector<double> PID::tunningTwiddle(double tol) {
+
+    vector<double> p = {0.0,0.0,0.0};
+    vector<double> dp = {1.0,1.0,1.0};
+
+    // auto = auto.init()
+    // x_traj, y_traj, best_error = simulator.run(auto, p) for n interations
+    double best_error = 0.0;
+    while (std::accumulate(dp.begin(), dp.end(), 0) > tol) {
+        for (unsigned int i = 0; i < p.size(); ++i) {
+            p[i] += dp[i];
+
+            //auto = auto.init()
+            //x_traj, y_traj, error = simulator.run(auto, p) for n interations
+            double error = 0.0;
+            if (error < best_error) {
+                best_error = error;
+                dp[i] *= 1.1;
+            } else {
+                p[i] -= 2*dp[i];
+                //auto =  auto.init()
+                //x_traj, y_traj, error = simulator.run(auto, p) for n interations
+                double error = 0.0;
+                if (error < best_error) {
+                    best_error = error;
+                    dp[i] *= 1.1;  
+                }
+                else {
+                    p[i] += dp[i];
+                    dp[i] *= 0.9;
+                }
+            }    
+        }
+    }
+    p.push_back(best_error);
+    return p; 
 }

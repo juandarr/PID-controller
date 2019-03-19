@@ -1,6 +1,10 @@
 #ifndef PID_H
 #define PID_H
 
+#include <vector>
+
+using std::vector;
+
 class PID {
  public:
   /**
@@ -30,6 +34,11 @@ class PID {
    * @output The total PID error
    */
   double TotalError();
+
+  /**
+   * Tune the PID parameters using twiddle method
+   */ 
+  vector<double> tunningTwiddle(double tol);
 
  private:
   /**
