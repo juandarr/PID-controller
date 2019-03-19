@@ -6,7 +6,7 @@ class PID {
   /**
    * Constructor
    */
-  PID();
+  PID() : prev_cte(0.0), error_sum(0.0) {};
 
   /**
    * Destructor.
@@ -45,6 +45,12 @@ class PID {
   double Kp;
   double Ki;
   double Kd;
+
+  /**
+   * Previous values storage
+  */ 
+  double prev_cte;
+  double error_sum;
 };
 
 #endif  // PID_H
