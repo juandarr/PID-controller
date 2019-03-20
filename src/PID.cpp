@@ -47,7 +47,8 @@ void PID::TuningInit(vector<double> K_pdi_, int max_steps_) {
     simulation_done = {false, false, false};
     value_set = {false, false, false};
     index_K = 0;
-    dp = {0.05, 3.5, 0.001};
+    dp = {0.016747 , 1.06572 , 0.000249128};
+    //dp = {0.05, 3.5, 0.001};
     //dp = {1.0 , 1.0, 1.0};
 }
 

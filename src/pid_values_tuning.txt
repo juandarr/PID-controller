@@ -1,3 +1,3 @@
 s3-Iteration completed - Best error: 6.08705e-05 Kpdi: {6.30028 , 36.2083 , 0} dp: {0.343404 , 1.04067 , 0.0343368}
 Best:
-s2-Iteration completed - Best error: 0.00159874 Kpdi: {0.369406 , 12.0161 , 0.00453171} dp: {0.016747 , 1.06572 , 0.000249128}
+s2-Iteration completed - Best error: 0.00159874 Kpdi: {0.369406 , 10.9504 , 0.00453171} dp: {0.016747 , 1.06572 , 0.000249128}
