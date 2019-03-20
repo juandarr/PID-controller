@@ -1,4 +1,9 @@
 #include "PID.h"
+#include <numeric>
+#include <iostream>
+
+using std::cout;
+using std::endl;
 
 /**
  * PID class.
@@ -7,25 +12,61 @@ PID::PID() {}
 
 PID::~PID() {}
 
-void PID::Init(double Kp_, double Ki_, double Kd_, int max_steps_=400) {
+void PID::Init(vector<double> K_pdi_) {
   /**
    * Initialize PID coefficients (and errors, if needed)
    */
-  Kp = Kp_;
-  Ki = Ki_;
-  Kd = Kd_;
+  K_pdi = K_pdi_;
   
   prev_cte = 0.0;
   error_sum = 0.0;
 
   p_error = 0.0;
-  i_error = 0.0;
   d_error  = 0.0;
-  
-  step_counter = 0;
-  error_tunning = 0.0;
-  max_steps = max_steps_;
+  i_error = 0.0;
+
+  tuning_enable = false;
 }
+
+void PID::TuningInit(vector<double> K_pdi_, int max_steps_) {
+    // Initialize the default PID controller variables 
+    Init(K_pdi_);
+    
+    /**
+     * Initialization of tuning relevant variables
+     */
+    tuning_enable = true;
+    step_counter = 0;
+    tuning_completed = false;
+    max_steps = max_steps_;
+    error_tuning = 0.0;
+
+    /**
+     * Flags used in the logic of twiddle method
+     */ 
+    simulation_done = {false, false, false};
+    value_set = {false, false, false};
+    index_K = 0;
+    dp = {0.05, 3.5, 0.001};
+    //dp = {1.0 , 1.0, 1.0};
+}
+
+void PID::TuningReset() {
+    // Reset values used to determine simulation completion
+    step_counter = 0;
+    tuning_completed = false;
+    error_tuning = 0.0;
+
+    // Reset values used in PID methods
+    prev_cte = 0.0;
+    error_sum = 0.0;
+
+    p_error = 0.0;
+    d_error  = 0.0;
+    i_error = 0.0;
+}
+
+
 
 void PID::UpdateError(double cte) {
     /**
@@ -33,10 +74,11 @@ void PID::UpdateError(double cte) {
      */
     error_sum += cte;
 
-    p_error = -Kp * cte;
-    d_error = -Kd * (cte-prev_cte);
-    i_error = -Ki * (error_sum);
-
+    p_error = -K_pdi[0] * cte;
+    d_error = -K_pdi[1] * (cte-prev_cte);
+    i_error = -K_pdi[2] * (error_sum);
+    
+    
     prev_cte = cte;
 }
 
@@ -48,22 +90,26 @@ double PID::TotalError() {
   return total_error; 
 }
 
-void PID::setTunning(bool value) {
-    tunning_enable = value;
-}
-
 int PID::getStepCounter() {
     return step_counter;
 }
-
 
 int PID::getMaxSteps() {
     return max_steps;
 }
 
-double PID::getTunningError() {
-    return error_tunning;
+double PID::getTuningError() {
+    return error_tuning;
 }
+
+vector<double> PID::getPIDValues() {
+    return K_pdi;
+}
+
+bool PID::isTuningEnable() {
+    return tuning_enable;
+}
+
 
 string PID::runProcess(json input) {
 
@@ -87,63 +133,125 @@ string PID::runProcess(json input) {
     else throttle = 0.0;
 
     // DEBUG
-    std::cout << "CTE: " << cte << " Steering Value: " << steer_value << std::endl;
+    //std::cout << "CTE: " << cte << " Steering Value: " << steer_value << std::endl;
 
     // Telemetry control signal from PID
     json msgJson;
     msgJson["steering_angle"] = steer_value;
     msgJson["throttle"] = throttle;
     string msg = "42[\"steer\"," + msgJson.dump() + "]";
-    std::cout << msg << std::endl;
+    //cout << msg << endl;
 
-    step_counter += 1;
-
-    if (tunning_enable) {
+    if (tuning_enable) {
+        step_counter += 1;
         if (step_counter >= (max_steps/2)) {
-            error_tunning += cte*cte;
+            error_tuning += cte*cte;
+            //cout << "Error tuning evolution: " <<error_tuning << endl;
         }
+        if (step_counter % 50 == 0)
+        {
+            cout << "Number of steps: " << step_counter << endl;
+        }
+        if (step_counter == max_steps) {
+            tuning_completed = true;
+            error_tuning = error_tuning/(double(max_steps)/2.0);
+        } 
     }
     
-
     return msg;
 }
 
-
-
-vector<double> PID::tunningTwiddle(double tol) {
-
-    vector<double> p = {0.0,0.0,0.0};
-    vector<double> dp = {1.0,1.0,1.0};
-
-    // auto = auto.init()
-    // x_traj, y_traj, best_error = simulator.run(auto, p) for n interations
-    double best_error = 0.0;
-    while (std::accumulate(dp.begin(), dp.end(), 0) > tol) {
-        for (unsigned int i = 0; i < p.size(); ++i) {
-            p[i] += dp[i];
-
-            //auto = auto.init()
-            //x_traj, y_traj, error = simulator.run(auto, p) for n interations
-            double error = 0.0;
-            if (error < best_error) {
-                best_error = error;
-                dp[i] *= 1.1;
+string PID::TwiddleTunning(json input, double tolerance) {
+    if (!simulation_done[0]) {
+        string msg = runProcess(input);
+        if (tuning_completed) {
+            best_error = error_tuning;
+            simulation_done[0] = true;
+            cout << "s1-Iteration completed - Best error: "<< best_error <<" Kpdi: {"<< K_pdi[0] <<" , "\
+                                        << K_pdi[1] << " , " << K_pdi[2] << "} dp: {" <<dp[0] <<" , "\
+                                        << dp[1] << " , " << dp[2] << "}"<< endl;
+        }
+        return msg;
+    } else {
+        double dp_total = std::accumulate(dp.begin(), dp.end(), 0);
+        if (dp_total > tolerance) {
+            if (!value_set[0]) {
+                K_pdi[index_K] += dp[index_K];
+                value_set[0] = true;
+                
+                TuningReset();
+                string msg = "42[\"reset\",{}]";
+                return msg;             
+            }
+            if(!simulation_done[1]) {
+                string msg = runProcess(input);
+                if (tuning_completed) {
+                    current_error = error_tuning;
+                    simulation_done[1] = true;
+                    cout << "s2-Iteration completed - Best error: "<< best_error <<" Kpdi: {"<< K_pdi[0] <<" , "\
+                                        << K_pdi[1] << " , " << K_pdi[2] << "} dp: {" <<dp[0] <<" , "\
+                                        << dp[1] << " , " << dp[2] << "}"<< endl;
+                }
+                return msg;
             } else {
-                p[i] -= 2*dp[i];
-                //auto =  auto.init() --Reset simulator
-                //x_traj, y_traj, error = simulator.run(auto, p) for n interations
-                double error = 0.0;
-                if (error < best_error) {
-                    best_error = error;
-                    dp[i] *= 1.1;  
+                if (current_error < best_error) {
+                    best_error = current_error;
+                    dp[index_K] *= 1.1;
+
+                    index_K += 1;
+                    if (index_K == dp.size()) index_K = 0; 
+                    simulation_done = {true, false, false};
+                    value_set = {false, false, false};
+
+                    TuningReset();
+                    string msg = "42[\"reset\",{}]";
+                    return msg;
+                    
+                } else {
+                    if (!value_set[1]) {
+                        K_pdi[index_K] -= 2*dp[index_K];
+                        value_set[1] =  true;
+                        
+                        TuningReset();
+                        string msg = "42[\"reset\",{}]";
+                        return msg;
+                    }
+                    if (!simulation_done[2]) {
+                        string msg = runProcess(input);
+                        if (tuning_completed) {
+                            current_error = error_tuning;
+                            simulation_done[2] = true;
+                            cout << "s3-Iteration completed - Best error: "<< best_error <<" Kpdi: {"<< K_pdi[0] <<" , "\
+                                        << K_pdi[1] << " , " << K_pdi[2] << "} dp: {" <<dp[0] <<" , "\
+                                        << dp[1] << " , " << dp[2] << "}"<< endl; 
+                        }
+                        return msg;
+                    } else {
+                        if (current_error < best_error) {
+                            best_error = current_error;
+                            dp[index_K] *= 1.1;
+                        } else {
+                            K_pdi[index_K] += dp[index_K];
+                            dp[index_K] *= 0.9;
+                        }
+
+                        index_K += 1;
+                        if (index_K == dp.size()) index_K = 0; 
+                        simulation_done = {true, false, false};
+                        value_set = {false, false, false};
+
+                        TuningReset();
+                        string msg = "42[\"reset\",{}]";
+                        return msg;
+                    }
                 }
-                else {
-                    p[i] += dp[i];
-                    dp[i] *= 0.9;
-                }
-            }    
+            } 
+        } else {
+            tuning_enable = false;
+            
+            TuningReset();
+            string msg = "42[\"reset\",{}]";
+            return msg;
         }
     }
-    p.push_back(best_error);
-    return p; 
 }

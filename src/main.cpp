@@ -35,7 +35,9 @@ int main() {
 
   PID pid;
   //Initialize the pid variable.
-  pid.Init(0.15, 0.003,7.0, 400);
+  //pid.Init({0.15, 7.0,0.003});
+
+  pid.TuningInit({0.15, 7.0,0.003}, 500);
 
   h.onMessage([&pid](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, 
                      uWS::OpCode opCode) {
@@ -52,17 +54,21 @@ int main() {
 
         if (event == "telemetry") {
           
-          
-          if (pid.getStepCounter() < pid.getMaxSteps()) {
-            string msg = pid.runProcess(j);
-            ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
+          string msg;
+
+          if (pid.isTuningEnable()) {
+            msg = pid.TwiddleTunning(j, 0.0000002); 
           } else {
-            pid.Init(0.15, 0.003,7.0,pid.getMaxSteps());
-            string reset_msg = "42[\"reset\",{}]";
-            ws.send(reset_msg.data(), reset_msg.length(), uWS::OpCode::TEXT); 
+            msg = pid.runProcess(j);
           }
-          
-          std::cout << "Number of steps: " << pid.step_counter << std::endl;
+
+          ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
+
+          //This is the restart message
+          /**
+           * string reset_msg = "42[\"reset\",{}]";
+            ws.send(reset_msg.data(), reset_msg.length(), uWS::OpCode::TEXT); 
+            */
         }  // end "telemetry" if
       } else {
         // Manual driving
