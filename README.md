@@ -1,98 +1,45 @@
-# CarND-Controls-PID
-Self-Driving Car Engineer Nanodegree Program
+# PID controller implementation
 
----
+## PID controller
 
-## Dependencies
+The PID controller, which stands for proportional, integral and differential, is a linear controller designed to stabalize a dinamic linear system in time. It is one the most practical and widely used controller in the industry and I have personally designed one to control a magnetic levitation system, as shown [here](https://juandarr.github.io/projects/maglev). One of the most atrative feaures of the PID controller is that it is quite easy to understand it. It is described by basic Calculus and each term by its math statement, tell us what does to the control signal. The following sections will describe each term of the controller. In these descriptions the error is the difference between the offset or desired value, and the actual output of the system: `(1) error(t) = offset - output(t)`. `dt` is the time step or sampling time. 
 
-* cmake >= 3.5
- * All OSes: [click here for installation instructions](https://cmake.org/install/)
-* make >= 4.1(mac, linux), 3.81(Windows)
-  * Linux: make is installed by default on most Linux distros
-  * Mac: [install Xcode command line tools to get make](https://developer.apple.com/xcode/features/)
-  * Windows: [Click here for installation instructions](http://gnuwin32.sourceforge.net/packages/make.htm)
-* gcc/g++ >= 5.4
-  * Linux: gcc / g++ is installed by default on most Linux distros
-  * Mac: same deal as make - [install Xcode command line tools]((https://developer.apple.com/xcode/features/)
-  * Windows: recommend using [MinGW](http://www.mingw.org/)
-* [uWebSockets](https://github.com/uWebSockets/uWebSockets)
-  * Run either `./install-mac.sh` or `./install-ubuntu.sh`.
-  * If you install from source, checkout to commit `e94b6e1`, i.e.
-    ```
-    git clone https://github.com/uWebSockets/uWebSockets 
-    cd uWebSockets
-    git checkout e94b6e1
-    ```
-    Some function signatures have changed in v0.14.x. See [this PR](https://github.com/udacity/CarND-MPC-Project/pull/3) for more details.
-* Simulator. You can download these from the [project intro page](https://github.com/udacity/self-driving-car-sim/releases) in the classroom.
+### Proportional
 
-Fellow students have put together a guide to Windows set-up for the project [here](https://s3-us-west-1.amazonaws.com/udacity-selfdrivingcar/files/Kidnapped_Vehicle_Windows_Setup.pdf) if the environment you have set up for the Sensor Fusion projects does not work for this project. There's also an experimental patch for windows in this [PR](https://github.com/udacity/CarND-PID-Control-Project/pull/3).
+```Python
+(2) P_term(t) = Kp * error(t)
+```
+The proportional term at time t is proportional to the error at time t. `Kp` is a constant. This term alone results in oscilations since its value will be negative when error(t) is negative and positive when error(t) is positive (assuming that Kp is positive). In the simulation, we want the car to be positioned at a specific angle: this will be the offset/desired value in the error term. The output is the actual angle of the car on the road. From (1) we get the error, then the P_term is given by (2). When the output is bigger than the offset the action control (P_term) will be negative, steering the car in the left direction. Otherwise it'll be negative, steering the car in the right direction. The term adds overshooting to the system output.
 
-## Basic Build Instructions
+### Differential
 
-1. Clone this repo.
-2. Make a build directory: `mkdir build && cd build`
-3. Compile: `cmake .. && make`
-4. Run it: `./pid`. 
+```Python
+(3) D_term(t) = Kd*(error(t) - error(t-1))/dt
+```
+The differential control action is proportional to the negative of the derivative of the error. This way, when the error is increasing, which results in a positive derivative, the control action will be positive. Otherwise, when the error is decreasing, which results in a negative derivative, the control action will be negative. In words relevant to the simulation case, if the actual angle of the car is less than the offset/desired value, and reducing (moving from right to left) so that the error increases in time, the action control will define a positive value, **steering the car to the right**. The opossite situation occurs when the actual angle is more than the offset/desired value, and increasing (moving from left to right) so that the error decreases in time, the action control will define a negative value, **steering the car to the left**. The overall effect of this term is serve as a compensation to the oscillations coming from the proportional action. This results in a stable steady state but doesn't take any action when the error remains constant, since `error(t)-error(t-1)` will be zero.
 
-Tips for setting up your environment can be found [here](https://classroom.udacity.com/nanodegrees/nd013/parts/40f38239-66b6-46ec-ae68-03afd8a601c8/modules/0949fca6-b379-42af-a919-ee50aa304e6a/lessons/f758c44c-5e40-4e01-93b5-1a82aa4e044f/concepts/23d376c7-0195-4276-bdf0-e02f1f3c665d)
+### Integral
 
-## Editor Settings
+```Python
+(4) I_term(t) = Ki*sum(all_errors)*dt
+ ```
+The integral term of the PID controller is proportional to the accumulation of errors in time. If the accumulation of errors is positive (meaning the actual angle is less than the desired value most of the time), the control action will be positive, thus the car will steer to the right. Otherwise , when the accumulation of error is negative (meaning the actual angle is more than the desired value most of the time), the integral control action will be negative, this steering the car in the left direction -moving the angle towards the desired angle-. The effect of this portion of the control is that always accounts for the contrinutions of errors in time, so the offset error (when there is a constant difference between the desired output and the actual output) will be minimized since any additional contribution of errors to the accumulator will result in a non-zero control action.
 
-We've purposefully kept editor configuration files out of this repo in order to
-keep it as simple and environment agnostic as possible. However, we recommend
-using the following settings:
+### Putting all together
 
-* indent using spaces
-* set tab width to 2 spaces (keeps the matrices in source code aligned)
+Therefore, the PID control is the integration of these three actions. 
 
-## Code Style
+```Python
+(5) PID = Kp * error(t) + Kd * (error(t) - error(t-1))/dt + Ki * sum(all_errors)*dt
+```
 
-Please (do your best to) stick to [Google's C++ style guide](https://google.github.io/styleguide/cppguide.html).
+## Tunning the PID controller
 
-## Project Instructions and Rubric
+### Manual tuning
+An initial approximation to the solution was achieved manually tuning the PID constants. One way to do this is to start with the proportional constant, moving the value until we reach an almost constant oscillation (increase/decrease values like 1 work for this constant). Then we tune the differential constant, with the goal of improving the steady state of the system. We need to reduce the oscillation in time (increase/decrease values like 0.05 work). Finally, the offset error (if exists), meaning that the error remains constant in time, can be reduce slightly changing the Ki constant (very small increases/decreases like 0.001 work). At the end I came up with the following constants: `Kp = 0.15, Kd =  7.0, Ki = 0.003`.
 
-Note: regardless of the changes you make, your project must be buildable using
-cmake and make!
+### Automated tuning with twiddle algorithm
 
-More information is only accessible by people who are already enrolled in Term 2
-of CarND. If you are enrolled, see [the project page](https://classroom.udacity.com/nanodegrees/nd013/parts/40f38239-66b6-46ec-ae68-03afd8a601c8/modules/f1820894-8322-4bb3-81aa-b26b3c6dcbaf/lessons/e8235395-22dd-4b87-88e0-d108c5e5bbf4/concepts/6a4d8d42-6a04-4aa6-b284-1697c0fd6562)
-for instructions and the project rubric.
-
-## Hints!
-
-* You don't have to follow this directory structure, but if you do, your work
-  will span all of the .cpp files here. Keep an eye out for TODOs.
-
-## Call for IDE Profiles Pull Requests
-
-Help your fellow students!
-
-We decided to create Makefiles with cmake to keep this project as platform
-agnostic as possible. Similarly, we omitted IDE profiles in order to we ensure
-that students don't feel pressured to use one IDE or another.
-
-However! I'd love to help people get up and running with their IDEs of choice.
-If you've created a profile for an IDE that you think other students would
-appreciate, we'd love to have you add the requisite profile files and
-instructions to ide_profiles/. For example if you wanted to add a VS Code
-profile, you'd add:
-
-* /ide_profiles/vscode/.vscode
-* /ide_profiles/vscode/README.md
-
-The README should explain what the profile does, how to take advantage of it,
-and how to install it.
-
-Frankly, I've never been involved in a project with multiple IDE profiles
-before. I believe the best way to handle this would be to keep them out of the
-repo root to avoid clutter. My expectation is that most profiles will include
-instructions to copy files to a new location to get picked up by the IDE, but
-that's just a guess.
-
-One last note here: regardless of the IDE used, every submitted project must
-still be compilable with cmake and make./
-
-## How to write a README
-A well written README file can enhance your project and portfolio.  Develop your abilities to create professional README files by completing [this free course](https://www.udacity.com/course/writing-readmes--ud777).
-
+I implemented twiddle in C++ as a method in the PID class. Twiddle finds good PID constants by constantly increasing and decreasing a set of step values define for each constant type, starting with `step_P = 1, step_D = 1, step_I = 1`. The PID constant are initialized to `0`. The algorithm then changes each constant value in the positive direction +step, and runs the process `n` steps. If the results were better than before, it will keep the change and will increase the step of that constant type by 1.1. Otherwise, the constant value is change in the negative direction `-2*step` (this includes the previous transition of `+step` and one additional step in the negative direction `-step`). Runs the process, if the results are better than before, increase the step of that constant type by 1.1. If none of the previous tries worked, decrease the step of that constant type by 0.9. Then move to the next constant. This operation repeats over and over again, until the sum of all the steps of constant types is less than a tolerance value. 
+After running this algorithm with an `n` total steps of 500, and more than 110 simulations the algorithm offered the following constants: `Kp = 0.369406, Kd =  14.1166, Ki = 0.00453171`. 
+The video at the following link shows the final results: [PID controller to control steering angle]().
