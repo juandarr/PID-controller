@@ -155,8 +155,10 @@ string PID::runProcess(json input) {
 }
 
 string PID::TwiddleTunning(json input) {
+    // Perform initial simulation until simulation_done[0] flag is true
     if (!simulation_done[0]) {
         string msg = runProcess(input);
+        // When simulation complete, store tuning_error in best_error and flag simulation 0 as done
         if (tuning_completed) {
             best_error = tuning_error;
             simulation_done[0] = true;
@@ -165,93 +167,130 @@ string PID::TwiddleTunning(json input) {
                                         << dp[1] << " , " << dp[2] << "}"<< endl;
         }
         return msg;
+    // When simulation 0 is done...
     } else {
         double dp_total = 0.0;
         for (unsigned int i = 0; i < dp.size(); ++i) dp_total += dp[i];
+        // Verify that accumulator of dp values is bigger than the tolerance
         if (dp_total > tolerance) {
+            // Set values and restart the simulation when flag value_set[0] is not true
             if (!value_set[0]) {
+                // Increase K_pdi constant by dp at index_K
                 K_pdi[index_K] += dp[index_K];
                 value_set[0] = true;
-                
+                // Simulation start message
                 cout << "\nIteration starts -> Kpdi: {"<< K_pdi[0] <<" , "\
                                         << K_pdi[1] << " , " << K_pdi[2] << "} dp: {" <<dp[0] <<" , "\
                                         << dp[1] << " , " << dp[2] << "}"<< endl;
 
+                // Reset PID tuning variables
                 ResetTuning();
+                // Reset simulation
                 string msg = "42[\"reset\",{}]";
                 return msg;             
             }
+            // Perform simulation 1 until simulation_done[1] flag is true
             if(!simulation_done[1]) {
                 string msg = runProcess(input);
+                // When simulation complete, store tuning_error in current_error and flag simulation 1 as done
                 if (tuning_completed) {
                     current_error = tuning_error;
                     simulation_done[1] = true;
                 }
                 return msg;
             } else {
+                // If current simulation had better performance than previous ones (using error metric)
                 if (current_error < best_error) {
+                    // Update best error value
                     best_error = current_error;
+                    // Modify step of constant by 1.1
                     dp[index_K] *= 1.1;
                     
                     cout << "Iteration completed - Best error improved: "<< best_error << endl;
 
+                    // Move to next constant
                     index_K += 1;
                     if (index_K == dp.size()) index_K = 0; 
+                    // Restart twiddle method flags
                     simulation_done = {true, false, false};
                     value_set = {false, false};
                     
+                    // Reset PID tuning variables
                     ResetTuning();
+                    // Reset simulation
                     string msg = "42[\"reset\",{}]";
                     return msg;
                     
                 } else {
+                    // Set values and restart the simulation when flag value_set[1] is not true
                     if (!value_set[1]) {
+                        // Decrease K_pdi constant by 2*dp at index_K
                         K_pdi[index_K] -= 2*dp[index_K];
                         value_set[1] =  true;
+                        // best_error wasn't changed. Print message to state that fact
                         cout << "Iteration completed - Best error remains: "<< best_error << endl;
-                        
+                        // Simulation start message
                         cout << "\nIteration starts -> Kpdi: {"<< K_pdi[0] <<" , "\
                                         << K_pdi[1] << " , " << K_pdi[2] << "} dp: {" <<dp[0] <<" , "\
                                         << dp[1] << " , " << dp[2] << "}"<< endl;
+                        // Reset PID tuning variables
                         ResetTuning();
+                        // Restart simulation
                         string msg = "42[\"reset\",{}]";
                         return msg;
                     }
+                    // Perform simulation 2 until simulation_done[2] flag is true
                     if (!simulation_done[2]) {
                         string msg = runProcess(input);
+                        // When simulation complete, store tuning_error in current_error and flag simulation 2 as done
                         if (tuning_completed) {
                             current_error = tuning_error;
                             simulation_done[2] = true;
                         }
                         return msg;
                     } else {
+                        // If current simulation had better performance than previous ones (using error metric)
                         if (current_error < best_error) {
+                            // Update best error value
                             best_error = current_error;
+                            // Modify step of constant by 1.1
                             dp[index_K] *= 1.1;
+                            // best_error was improved in this iteration. Print message to state that fact
                             cout << "Iteration completed - Best error improved: "<< best_error << endl;
                         } else {
+                            // Increase K_pdi constant by dp at index_K
                             K_pdi[index_K] += dp[index_K];
+                            // Modify step of constant by 0.9
                             dp[index_K] *= 0.9;
                             cout << "Iteration completed - Best error remains: "<< best_error << endl;
                         }
 
+                        // Move to the next constant
                         index_K += 1;
-                        if (index_K == dp.size()) index_K = 0; 
+                        if (index_K == dp.size()) index_K = 0;
+                        // Restart twiddle method flags 
                         simulation_done = {true, false, false};
                         value_set = {false, false};
 
+                        // Reset PID tuning variables
                         ResetTuning();
+                        // Restart simulation
                         string msg = "42[\"reset\",{}]";
                         return msg;
                     }
                 }
             } 
+        // If accumulator of dp values is less than the tolerance
         } else {
+            // Set tuning as completed by disabling tuning
             tuning_enable = false;
             
+            // Tuning complete message
             cout << "Tuning Complete.\nSimulation starts -> Kpdi: {"<< K_pdi[0] <<" , "\
                                         << K_pdi[1] << " , " << K_pdi[2] <<"}"<< endl;
+            // Reset PID tuning variables                            
             ResetTuning();
+            // Restart simulation
             string msg = "42[\"reset\",{}]";
             return msg;
         }
