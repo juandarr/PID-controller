@@ -34,12 +34,14 @@ int main() {
   uWS::Hub h;
 
   PID pid;
+  
   //Initialize the pid variable.
-  //pid.Init({0.15, 7.0,0.003});
-  //{0.15, 7.0,0.003}
-  pid.Init({0.369406 , 14.1166 , 0.00453171});
-  //pid.TuningInit({0.369406 , 10.9504 , 0.00453171}, 500);
-  //pid.TuningInit({0.369406 , 10.9504 , 0.00453171}, 1000);
+  pid.Init({0.15, 7.0,0.003}); // Best constants after Manual PID tuning
+  //pid.Init({0.369406 , 14.1166 , 0.00453171}); // Best constans after Twiddle PID tuning
+
+  //pid.InitTuning({0.369406 , 10.9504 , 0.00453171}, 500 , 0.0000002);
+  //pid.InitTuning({0.369406 , 10.9504 , 0.00453171}, 1000, 0.0000002);
+
   h.onMessage([&pid](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, 
                      uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
@@ -58,18 +60,13 @@ int main() {
           string msg;
 
           if (pid.isTuningEnable()) {
-            msg = pid.TwiddleTunning(j, 0.0000002); 
+            msg = pid.TwiddleTunning(j); 
           } else {
             msg = pid.runProcess(j);
           }
 
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
 
-          //This is the restart message
-          /**
-           * string reset_msg = "42[\"reset\",{}]";
-            ws.send(reset_msg.data(), reset_msg.length(), uWS::OpCode::TEXT); 
-            */
         }  // end "telemetry" if
       } else {
         // Manual driving

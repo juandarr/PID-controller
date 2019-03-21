@@ -32,12 +32,12 @@ class PID {
      * Initialize all variables for tuning PID controller with twiddle.
      * @param (Kp_,Kd_,Ki_) The initial PID coefficients
      */
-    void TuningInit(vector<double> K_pdi_, int max_steps_);
+    void InitTuning(vector<double> K_pdi_, int max_steps_, double tolerance_);
 
     /**
      * Reset all variables relevant to the PID controller tuning
      */ 
-    void TuningReset();
+    void ResetTuning();
 
     /**
      * Update the PID error variables given cross track error.
@@ -52,29 +52,9 @@ class PID {
     double TotalError();
     
     /**
-     * Get the step counter value
-     */ 
-    int getStepCounter();
-    
-    /**
-     * Get max steps value
-     */ 
-    int getMaxSteps();
-
-    /**
-     * Get tunning error value
-     */
-    double getTuningError(); 
-    
-    /**
      * Get tunning completed flag
      */
     bool isTuningEnable(); 
-
-    /**
-     * Get pid values
-     */
-    vector<double> getPIDValues(); 
 
     /**
      * Run PID control process
@@ -84,7 +64,7 @@ class PID {
     /**
     * Tune the PID parameters using twiddle method
     */ 
-    string TwiddleTunning(json input, double tolerance);
+    string TwiddleTunning(json input);
   
   private:
     /**
@@ -101,14 +81,17 @@ class PID {
     vector<double> K_pdi;
  
     /**
-     * Previous values storage
+     * Previous values
     */ 
+    // Previous error
     double prev_cte;
+    // Error accumulator
     double error_sum;
 
     /**
-     * Tunning relevant variables
+     * Tuning relevant variables
      */
+    // True when InitTuning method has been used
     bool tuning_enable;
     // True when tunning is complete
     bool tuning_completed;
@@ -117,19 +100,25 @@ class PID {
     // Max number of steps per simulation trial in twiddle tunning
     int max_steps;
     // Tunning error when the system is in a steady state (after n inital steps)
-    double error_tuning;
-    // Used as temporal error variable in twiddle method
+    double tuning_error;
+    // Best error in simulations
     double best_error;
+    // Current error after completion of simulation
     double current_error;
 
     /**
      * Flags used in the logic of twiddle method
      */ 
+    // Elements are true when simulations are done, otherwise false
     vector<bool> simulation_done;
+    // Elements are true when values have been set, otherwise false
     vector<bool> value_set;
+    // Index K iterator
     unsigned int index_K;
-    // Differential variable used to change PID constants in twiddle
+    // Increase/decrease step value for modification of PID constants in twiddle
     vector<double> dp;
+    // Tolerance
+    double tolerance;
 };
 
 #endif  // PID_H

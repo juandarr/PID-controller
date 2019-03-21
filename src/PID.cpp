@@ -28,7 +28,7 @@ void PID::Init(vector<double> K_pdi_) {
   tuning_enable = false;
 }
 
-void PID::TuningInit(vector<double> K_pdi_, int max_steps_) {
+void PID::InitTuning(vector<double> K_pdi_, int max_steps_, double tolerance_) {
     // Initialize the default PID controller variables 
     Init(K_pdi_);
     
@@ -39,7 +39,7 @@ void PID::TuningInit(vector<double> K_pdi_, int max_steps_) {
     step_counter = 0;
     tuning_completed = false;
     max_steps = max_steps_;
-    error_tuning = 0.0;
+    tuning_error = 0.0;
 
     /**
      * Flags used in the logic of twiddle method
@@ -50,13 +50,14 @@ void PID::TuningInit(vector<double> K_pdi_, int max_steps_) {
     //dp = {0.016747 , 1.06572 , 0.000249128};
     //dp = {0.05, 3.5, 0.001};
     dp = {1.0 , 1.0, 1.0};
+    tolerance = tolerance_;
 }
 
-void PID::TuningReset() {
+void PID::ResetTuning() {
     // Reset values used to determine simulation completion
     step_counter = 0;
     tuning_completed = false;
-    error_tuning = 0.0;
+    tuning_error = 0.0;
 
     // Reset values used in PID methods
     prev_cte = 0.0;
@@ -91,26 +92,9 @@ double PID::TotalError() {
   return total_error; 
 }
 
-int PID::getStepCounter() {
-    return step_counter;
-}
-
-int PID::getMaxSteps() {
-    return max_steps;
-}
-
-double PID::getTuningError() {
-    return error_tuning;
-}
-
-vector<double> PID::getPIDValues() {
-    return K_pdi;
-}
-
 bool PID::isTuningEnable() {
     return tuning_enable;
 }
-
 
 string PID::runProcess(json input) {
 
@@ -130,6 +114,7 @@ string PID::runProcess(json input) {
     
     double max_speed = 30;
     double throttle;
+    // Stop acceleration when speed has reached max_speed
     if (speed < max_speed) throttle = 0.5;
     else throttle = 0.0;
 
@@ -143,30 +128,37 @@ string PID::runProcess(json input) {
     string msg = "42[\"steer\"," + msgJson.dump() + "]";
     //cout << msg << endl;
 
+    /**
+     * Peforms calculations relevant to the tunning process when tuning_enable 
+     * flag is true. Increments step_counter, ,  and finally 
+     */ 
     if (tuning_enable) {
         step_counter += 1;
+        // Accumulate error after max_steps/2 is surpassed
         if (step_counter >= (max_steps/2)) {
-            error_tuning += cte*cte;
+            tuning_error += cte*cte;
             //cout << "Error tuning evolution: " <<error_tuning << endl;
         }
+        // Prints number of steps every 200 steps
         if (step_counter % 200 == 0)
         {
             cout << "Number of steps: " << step_counter << endl;
         }
+        //set the flag tuning_completed to true and update the tuning_error when the simulation is done
         if (step_counter == max_steps) {
             tuning_completed = true;
-            error_tuning = error_tuning/(double(max_steps)/2.0);
+            tuning_error = tuning_error/(double(max_steps)/2.0);
         } 
     }
     
     return msg;
 }
 
-string PID::TwiddleTunning(json input, double tolerance) {
+string PID::TwiddleTunning(json input) {
     if (!simulation_done[0]) {
         string msg = runProcess(input);
         if (tuning_completed) {
-            best_error = error_tuning;
+            best_error = tuning_error;
             simulation_done[0] = true;
             cout << "First iteration completed - Best error: "<< best_error <<" Kpdi: {"<< K_pdi[0] <<" , "\
                                         << K_pdi[1] << " , " << K_pdi[2] << "} dp: {" <<dp[0] <<" , "\
@@ -185,14 +177,14 @@ string PID::TwiddleTunning(json input, double tolerance) {
                                         << K_pdi[1] << " , " << K_pdi[2] << "} dp: {" <<dp[0] <<" , "\
                                         << dp[1] << " , " << dp[2] << "}"<< endl;
 
-                TuningReset();
+                ResetTuning();
                 string msg = "42[\"reset\",{}]";
                 return msg;             
             }
             if(!simulation_done[1]) {
                 string msg = runProcess(input);
                 if (tuning_completed) {
-                    current_error = error_tuning;
+                    current_error = tuning_error;
                     simulation_done[1] = true;
                 }
                 return msg;
@@ -206,9 +198,9 @@ string PID::TwiddleTunning(json input, double tolerance) {
                     index_K += 1;
                     if (index_K == dp.size()) index_K = 0; 
                     simulation_done = {true, false, false};
-                    value_set = {false, false, false};
+                    value_set = {false, false};
                     
-                    TuningReset();
+                    ResetTuning();
                     string msg = "42[\"reset\",{}]";
                     return msg;
                     
@@ -221,14 +213,14 @@ string PID::TwiddleTunning(json input, double tolerance) {
                         cout << "\nIteration starts -> Kpdi: {"<< K_pdi[0] <<" , "\
                                         << K_pdi[1] << " , " << K_pdi[2] << "} dp: {" <<dp[0] <<" , "\
                                         << dp[1] << " , " << dp[2] << "}"<< endl;
-                        TuningReset();
+                        ResetTuning();
                         string msg = "42[\"reset\",{}]";
                         return msg;
                     }
                     if (!simulation_done[2]) {
                         string msg = runProcess(input);
                         if (tuning_completed) {
-                            current_error = error_tuning;
+                            current_error = tuning_error;
                             simulation_done[2] = true;
                         }
                         return msg;
@@ -246,9 +238,9 @@ string PID::TwiddleTunning(json input, double tolerance) {
                         index_K += 1;
                         if (index_K == dp.size()) index_K = 0; 
                         simulation_done = {true, false, false};
-                        value_set = {false, false, false};
+                        value_set = {false, false};
 
-                        TuningReset();
+                        ResetTuning();
                         string msg = "42[\"reset\",{}]";
                         return msg;
                     }
@@ -259,7 +251,7 @@ string PID::TwiddleTunning(json input, double tolerance) {
             
             cout << "Tuning Complete.\nSimulation starts -> Kpdi: {"<< K_pdi[0] <<" , "\
                                         << K_pdi[1] << " , " << K_pdi[2] <<"}"<< endl;
-            TuningReset();
+            ResetTuning();
             string msg = "42[\"reset\",{}]";
             return msg;
         }
