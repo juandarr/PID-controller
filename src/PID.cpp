@@ -17,9 +17,6 @@ void PID::Init(vector<double> K_pdi_) {
    * Initialize PID coefficients (and errors, if needed)
    */
   K_pdi = K_pdi_;
-  
-  prev_cte = 0.0;
-  error_sum = 0.0;
 
   p_error = 0.0;
   d_error  = 0.0;
@@ -47,9 +44,9 @@ void PID::InitTuning(vector<double> K_pdi_, int max_steps_, double tolerance_) {
     simulation_done = {false, false, false};
     value_set = {false, false, false};
     index_K = 0;
-    //dp = {0.016747 , 1.06572 , 0.000249128};
+    dp = {0.478297 , 0.970299 , 0.531441};
     //dp = {0.05, 3.5, 0.001};
-    dp = {1.0 , 1.0, 1.0};
+    //dp = {1.0 , 1.0, 1.0};
     tolerance = tolerance_;
 }
 
@@ -60,35 +57,26 @@ void PID::ResetTuning() {
     tuning_error = 0.0;
 
     // Reset values used in PID methods
-    prev_cte = 0.0;
-    error_sum = 0.0;
-
     p_error = 0.0;
     d_error  = 0.0;
     i_error = 0.0;
 }
 
 
-
 void PID::UpdateError(double cte) {
     /**
      * Update PID errors based on cte.
      */
-    error_sum += cte;
-
-    p_error = -K_pdi[0] * cte;
-    d_error = -K_pdi[1] * (cte-prev_cte);
-    i_error = -K_pdi[2] * (error_sum);
-    
-    
-    prev_cte = cte;
+    d_error =  cte-p_error;
+    p_error =  cte;
+    i_error += cte;
 }
 
 double PID::TotalError() {
   /**
    * Calculate and return the total error
    */
-  double total_error = p_error + d_error + i_error;
+  double total_error = -K_pdi[0]*p_error - K_pdi[1]*d_error -K_pdi[2] * i_error;
   return total_error; 
 }
 
@@ -115,7 +103,7 @@ string PID::runProcess(json input) {
     double max_speed = 30;
     double throttle;
     // Stop acceleration when speed has reached max_speed
-    if (speed < max_speed) throttle = 0.5;
+    if (speed < max_speed) throttle = 1.0;
     else throttle = 0.0;
 
     // DEBUG
@@ -140,7 +128,7 @@ string PID::runProcess(json input) {
             //cout << "Error tuning evolution: " <<error_tuning << endl;
         }
         // Prints number of steps every 200 steps
-        if (step_counter % 200 == 0)
+        if (step_counter % 50 == 0)
         {
             cout << "Number of steps: " << step_counter << endl;
         }
@@ -162,7 +150,7 @@ string PID::TwiddleTunning(json input) {
         if (tuning_completed) {
             best_error = tuning_error;
             simulation_done[0] = true;
-            cout << "First iteration completed - Best error: "<< best_error <<" Kpdi: {"<< K_pdi[0] <<" , "\
+            cout << "Iteration completed - Best error: "<< best_error <<" Kpdi: {"<< K_pdi[0] <<" , "\
                                         << K_pdi[1] << " , " << K_pdi[2] << "} dp: {" <<dp[0] <<" , "\
                                         << dp[1] << " , " << dp[2] << "}"<< endl;
         }

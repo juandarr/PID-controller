@@ -36,11 +36,14 @@ int main() {
   PID pid;
   
   //Initialize the pid variable.
-  pid.Init({0.15, 7.0,0.003}); // Best constants after Manual PID tuning
-  //pid.Init({0.369406 , 14.1166 , 0.00453171}); // Best constans after Twiddle PID tuning
+  //pid.Init({0.15, 7.0,0.003}); // Best constants after Manual PID tuning
+  pid.Init({6.86443 , 15.3001 , 0.00453171}); // Best constans after Twiddle PID tuning
+  //pid.Init({0.06, 1.29, 0.00031});
+  //pid.Init({0.2, 1.29, 0.00031});
 
   //pid.InitTuning({0.369406 , 10.9504 , 0.00453171}, 500 , 0.0000002);
   //pid.InitTuning({0.369406 , 10.9504 , 0.00453171}, 1000, 0.0000002);
+  //pid.InitTuning({0.369406 , 14.2068 , 0.00453171}, 200, 0.001);
 
   h.onMessage([&pid](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, 
                      uWS::OpCode opCode) {

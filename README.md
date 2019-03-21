@@ -36,7 +36,7 @@ Finally, equation (5) presents the famous PID controller, which is the integrati
 # 2. Tunning the PID controller
 
 ## 2.1 Manual tuning
-An initial approximation to the solution was achieved by manually tuning the PID constants. One way to do this is to start with the proportional constant, moving the value until we reach an almost constant oscillation (increase/decrease in amounts of 1 work for this constant). Then we tune the differential constant, with the goal of improving the steady state of the system. We need to reduce the oscillation in time (increase/decrease in amounts of 0.05 work). Finally, the offset error (if exists), meaning that the error remains constant in time, can be reduced by slightly changing the Ki constant (very small increases/decreases in amounts of 0.001 work). At the end I came up with the following constants: `Kp = 0.15, Kd =  7.0, Ki = 0.003`. Here is a short video showing the performance of this controller in simulation: [Manual tuning - PID controller to control steering angle]().
+An initial approximation to the solution was achieved by manually tuning the PID constants. One way to do this is to start with the proportional constant, moving the value until we reach an almost constant oscillation (increase/decrease in amounts of 1 work for this constant). Then we tune the differential constant, with the goal of improving the steady state of the system. We need to reduce the oscillation in time (increase/decrease in amounts of 0.05 work). Finally, the offset error (if exists), meaning that the error remains constant in time, can be reduced by slightly changing the Ki constant (very small increases/decreases in amounts of 0.001 work). At the end I came up with the following constants: `Kp = 0.15, Kd =  7.0, Ki = 0.003`. Here is a short video showing the performance of this controller in simulation: [Manual tuning - PID controller to control steering angle](https://youtu.be/aAup6fCuPtk).
 
 ## 2.2 Automated tuning with twiddle algorithm
 
@@ -44,7 +44,7 @@ I implemented Twiddle in C++ as a method in the PID class. Twiddle finds good PI
 After running this algorithm with an `n` total steps of 500 and more than 150 simulations, we reached the following constants: `Kp = 0.369406, Kd =  14.1166, Ki = 0.00453171`. 
 The following video shows the final results: [Twiddle tuning - PID controller to control steering angle]().
 
-# 3. Intructions 
+# 3. Instructions 
 
 This project involves the Udacity Self Driving Car  Term 2 Simulator which can be downloaded [here](https://github.com/udacity/self-driving-car-sim/releases/tag/v1.45). The simulator serves as a visual output of the logic performed in the repository program, which creates a server that uses the simulation as a front end. 
 
