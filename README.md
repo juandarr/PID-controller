@@ -41,8 +41,8 @@ An initial approximation to the solution was achieved by manually tuning the PID
 ## 2.2 Automated tuning with twiddle algorithm
 
 I implemented Twiddle in C++ as a method in the PID class. Twiddle finds good PID constants by constantly increasing or decreasing a set of step values defined for each constant, starting with `step_P = 1, step_D = 1, step_I = 1`. The PID constants are initialized to `0`. The algorithm then changes each constant value in the positive direction `+step`, and runs the process `n` steps. If the results were better than before (in terms of the overall error), it will keep the change and will increase the step of that constant by 1.1. Otherwise, the constant value is changed in the negative direction `-2*step` (this includes the previous transition of `+step` and one additional step in the negative direction `-step`). Next, twiddle runs the process. If the results are better than before, increase the step of that constant by 1.1. If none of the previous tries worked, decrease the step of that constant by 0.9. Then move to the next constant. This operation repeats over and over again until the sum of all the steps of constant types is less than a tolerance value. The constant loop should move in the direction P-D-I for the reasons explained in the section `Manual tuning`.
-After running this algorithm with an `n` total steps of 500 and more than 150 simulations, we reached the following constants: `Kp = 0.369406, Kd =  14.1166, Ki = 0.00453171`. 
-The following video shows the final results: [Twiddle tuning - PID controller to control steering angle]().
+After running this algorithm with an `n` total steps of 500 and more than 150 simulations, I reached the following constants: `Kp = 0.369406, Kd =  14.1166, Ki = 0.00453171`. 
+The following video shows the final results: [Twiddle tuning - PID controller to control steering angle](https://youtu.be/Ju-uVYbYgR8).
 
 # 3. Instructions 
 

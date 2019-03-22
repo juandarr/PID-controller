@@ -1,6 +1,8 @@
 #include <math.h>
 #include <uWS/uWS.h>
 #include <iostream>
+#include <ctime>
+
 #include <string>
 #include "json.hpp"
 #include "PID.h"
@@ -8,6 +10,8 @@
 // for convenience
 using nlohmann::json;
 using std::string;
+using std::endl;
+using std::cout;
 
 // For converting back and forth between radians and degrees.
 constexpr double pi() { return M_PI; }
@@ -34,18 +38,23 @@ int main() {
   uWS::Hub h;
 
   PID pid;
-  
   //Initialize the pid variable.
-  //pid.Init({0.15, 7.0,0.003}); // Best constants after Manual PID tuning
-  pid.Init({6.86443 , 15.3001 , 0.00453171}); // Best constans after Twiddle PID tuning
-  //pid.Init({0.06, 1.29, 0.00031});
-  //pid.Init({0.2, 1.29, 0.00031});
+  pid.Init({0.369406 , 10.9504 , 0.00453171});
+  // Use this initialization instead of the standard when you want to tune the PID constants with twiddle
+  //pid.InitTuning({0.15, 7.0,0.003}, 1000, 0.00002);
 
-  //pid.InitTuning({0.369406 , 10.9504 , 0.00453171}, 500 , 0.0000002);
-  //pid.InitTuning({0.369406 , 10.9504 , 0.00453171}, 1000, 0.0000002);
-  //pid.InitTuning({0.369406 , 14.2068 , 0.00453171}, 200, 0.001);
+  std::ofstream out_file("datalog.txt", std::ios::out|std::ios::app|std::ios::ate);
+  if (out_file.fail())
+  {
+      std::cerr << "Cannot open file "<< "datalog.txt" <<" for output" << endl;
+  }
 
-  h.onMessage([&pid](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, 
+  dual_stream ds(out_file, std::cout);
+  auto t = std::time(nullptr);
+  auto tm = *std::localtime(&t);
+  ds << std::put_time(&tm, "%d-%m-%Y %H-%M-%S\n\n");
+
+  h.onMessage([&pid, &ds](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, 
                      uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
@@ -63,7 +72,7 @@ int main() {
           string msg;
 
           if (pid.isTuningEnable()) {
-            msg = pid.TwiddleTunning(j); 
+            msg = pid.TwiddleTunning( j, ds); 
           } else {
             msg = pid.runProcess(j);
           }
@@ -98,4 +107,6 @@ int main() {
   }
   
   h.run();
+
+  out_file.close();
 }

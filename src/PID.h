@@ -4,11 +4,13 @@
 #include <vector>
 #include <string>
 #include "json.hpp"
+#include "dual_stream.h"
 
 // for convenience
 using nlohmann::json;
 using std::string;
 using std::vector;
+
 
 class PID {
   public:
@@ -64,7 +66,7 @@ class PID {
     /**
     * Tune the PID parameters using twiddle method
     */ 
-    string TwiddleTunning(json input);
+    string TwiddleTunning(json input, dual_stream &ds);
   
   private:
     /**
@@ -119,6 +121,7 @@ class PID {
     vector<double> dp;
     // Tolerance
     double tolerance;
+    int iterations ;
 };
 
 #endif  // PID_H

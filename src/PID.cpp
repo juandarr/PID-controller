@@ -1,6 +1,8 @@
 #include "PID.h"
 #include <numeric>
 #include <iostream>
+#include <fstream>
+
 
 using std::cout;
 using std::endl;
@@ -44,10 +46,16 @@ void PID::InitTuning(vector<double> K_pdi_, int max_steps_, double tolerance_) {
     simulation_done = {false, false, false};
     value_set = {false, false, false};
     index_K = 0;
-    dp = {0.478297 , 0.970299 , 0.531441};
-    //dp = {0.05, 3.5, 0.001};
+    //1
+    //dp = {0.148594 , 0.201794 , 0.135085};
+    //2
+    //dp = {0.00328097 , 0.00364551 , 0.00199668};
+    //dp = {0.5 , 0.5 , 0.5};
+    //3
+    dp = {0.1028183 , 0.220673 , 0.0443147};
     //dp = {1.0 , 1.0, 1.0};
     tolerance = tolerance_;
+    iterations = 1;
 }
 
 void PID::ResetTuning() {
@@ -128,7 +136,7 @@ string PID::runProcess(json input) {
             //cout << "Error tuning evolution: " <<error_tuning << endl;
         }
         // Prints number of steps every 200 steps
-        if (step_counter % 50 == 0)
+        if (step_counter % 100 == 0)
         {
             cout << "Number of steps: " << step_counter << endl;
         }
@@ -142,7 +150,7 @@ string PID::runProcess(json input) {
     return msg;
 }
 
-string PID::TwiddleTunning(json input) {
+string PID::TwiddleTunning(json input, dual_stream &ds) {
     // Perform initial simulation until simulation_done[0] flag is true
     if (!simulation_done[0]) {
         string msg = runProcess(input);
@@ -150,9 +158,11 @@ string PID::TwiddleTunning(json input) {
         if (tuning_completed) {
             best_error = tuning_error;
             simulation_done[0] = true;
-            cout << "Iteration completed - Best error: "<< best_error <<" Kpdi: {"<< K_pdi[0] <<" , "\
+            ds << "Iteration "<< iterations << " completed - Best error: "<< best_error <<" Kpdi: {"<< K_pdi[0] <<" , "\
                                         << K_pdi[1] << " , " << K_pdi[2] << "} dp: {" <<dp[0] <<" , "\
-                                        << dp[1] << " , " << dp[2] << "}"<< endl;
+                                        << dp[1] << " , " << dp[2] << "}" << "\n";
+            iterations += 1;
+            
         }
         return msg;
     // When simulation 0 is done...
@@ -167,9 +177,9 @@ string PID::TwiddleTunning(json input) {
                 K_pdi[index_K] += dp[index_K];
                 value_set[0] = true;
                 // Simulation start message
-                cout << "\nIteration starts -> Kpdi: {"<< K_pdi[0] <<" , "\
+                ds << "\nIteration starts -> Kpdi: {"<< K_pdi[0] <<" , "\
                                         << K_pdi[1] << " , " << K_pdi[2] << "} dp: {" <<dp[0] <<" , "\
-                                        << dp[1] << " , " << dp[2] << "}"<< endl;
+                                        << dp[1] << " , " << dp[2] << "}" << "\n";
 
                 // Reset PID tuning variables
                 ResetTuning();
@@ -194,7 +204,8 @@ string PID::TwiddleTunning(json input) {
                     // Modify step of constant by 1.1
                     dp[index_K] *= 1.1;
                     
-                    cout << "Iteration completed - Best error improved: "<< best_error << endl;
+                    ds << "Iteration "<< iterations << " completed - Best error improved: "<< best_error << "\n";
+                    iterations += 1;
 
                     // Move to next constant
                     index_K += 1;
@@ -216,11 +227,13 @@ string PID::TwiddleTunning(json input) {
                         K_pdi[index_K] -= 2*dp[index_K];
                         value_set[1] =  true;
                         // best_error wasn't changed. Print message to state that fact
-                        cout << "Iteration completed - Best error remains: "<< best_error << endl;
+                        ds << "Iteration "<< iterations << " completed - Best error remains: "<< best_error << "\n";
+                        iterations += 1;
                         // Simulation start message
-                        cout << "\nIteration starts -> Kpdi: {"<< K_pdi[0] <<" , "\
+                        ds << "\nIteration starts -> Kpdi: {"<< K_pdi[0] <<" , "\
                                         << K_pdi[1] << " , " << K_pdi[2] << "} dp: {" <<dp[0] <<" , "\
-                                        << dp[1] << " , " << dp[2] << "}"<< endl;
+                                        << dp[1] << " , " << dp[2] << "}" << "\n";
+
                         // Reset PID tuning variables
                         ResetTuning();
                         // Restart simulation
@@ -244,13 +257,15 @@ string PID::TwiddleTunning(json input) {
                             // Modify step of constant by 1.1
                             dp[index_K] *= 1.1;
                             // best_error was improved in this iteration. Print message to state that fact
-                            cout << "Iteration completed - Best error improved: "<< best_error << endl;
+                            ds << "Iteration "<< iterations << " completed - Best error improved: "<< best_error << "\n";
+                            iterations += 1;
                         } else {
                             // Increase K_pdi constant by dp at index_K
                             K_pdi[index_K] += dp[index_K];
                             // Modify step of constant by 0.9
                             dp[index_K] *= 0.9;
-                            cout << "Iteration completed - Best error remains: "<< best_error << endl;
+                            ds << "Iteration "<< iterations << " completed - Best error remains: "<< best_error << "\n";
+                            iterations += 1;
                         }
 
                         // Move to the next constant
@@ -274,8 +289,8 @@ string PID::TwiddleTunning(json input) {
             tuning_enable = false;
             
             // Tuning complete message
-            cout << "Tuning Complete.\nSimulation starts -> Kpdi: {"<< K_pdi[0] <<" , "\
-                                        << K_pdi[1] << " , " << K_pdi[2] <<"}"<< endl;
+            ds << "Tuning Complete. Total iterations: "<< iterations<< ".\nSimulation starts -> Kpdi: {"<< K_pdi[0] <<" , "\
+                                        << K_pdi[1] << " , " << K_pdi[2] <<"}"<< "\n";
             // Reset PID tuning variables                            
             ResetTuning();
             // Restart simulation
