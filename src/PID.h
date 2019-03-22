@@ -66,7 +66,7 @@ class PID {
     /**
     * Tune the PID parameters using twiddle method
     */ 
-    string TwiddleTunning(json input, dual_stream &ds);
+    string TwiddleTunning(json input, dual_stream& ds);
   
   private:
     /**

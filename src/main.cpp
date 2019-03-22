@@ -6,6 +6,7 @@
 #include <string>
 #include "json.hpp"
 #include "PID.h"
+#include "dual_stream.h"
 
 // for convenience
 using nlohmann::json;
@@ -39,20 +40,16 @@ int main() {
 
   PID pid;
   //Initialize the pid variable.
-  pid.Init({0.369406 , 10.9504 , 0.00453171});
+  //pid.Init({0.369406 , 10.9504 , 0.00453171});
   // Use this initialization instead of the standard when you want to tune the PID constants with twiddle
-  //pid.InitTuning({0.15, 7.0,0.003}, 1000, 0.00002);
+  pid.InitTuning({0.15, 7.0,0.003}, 100, 0.00002);
 
-  std::ofstream out_file("datalog.txt", std::ios::out|std::ios::app|std::ios::ate);
-  if (out_file.fail())
-  {
-      std::cerr << "Cannot open file "<< "datalog.txt" <<" for output" << endl;
-  }
 
-  dual_stream ds(out_file, std::cout);
+  dual_stream ds("datalog.txt");
+
   auto t = std::time(nullptr);
   auto tm = *std::localtime(&t);
-  ds << std::put_time(&tm, "%d-%m-%Y %H-%M-%S\n\n");
+  ds << std::put_time(&tm, "%d-%m-%Y %H-%M-%S\n") << endl;
 
   h.onMessage([&pid, &ds](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, 
                      uWS::OpCode opCode) {
@@ -107,6 +104,4 @@ int main() {
   }
   
   h.run();
-
-  out_file.close();
 }

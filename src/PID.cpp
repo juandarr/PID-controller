@@ -150,7 +150,7 @@ string PID::runProcess(json input) {
     return msg;
 }
 
-string PID::TwiddleTunning(json input, dual_stream &ds) {
+string PID::TwiddleTunning(json input,  dual_stream& ds) {
     // Perform initial simulation until simulation_done[0] flag is true
     if (!simulation_done[0]) {
         string msg = runProcess(input);
@@ -160,7 +160,7 @@ string PID::TwiddleTunning(json input, dual_stream &ds) {
             simulation_done[0] = true;
             ds << "Iteration "<< iterations << " completed - Best error: "<< best_error <<" Kpdi: {"<< K_pdi[0] <<" , "\
                                         << K_pdi[1] << " , " << K_pdi[2] << "} dp: {" <<dp[0] <<" , "\
-                                        << dp[1] << " , " << dp[2] << "}" << "\n";
+                                        << dp[1] << " , " << dp[2] << "}" << endl;
             iterations += 1;
             
         }
@@ -179,8 +179,7 @@ string PID::TwiddleTunning(json input, dual_stream &ds) {
                 // Simulation start message
                 ds << "\nIteration starts -> Kpdi: {"<< K_pdi[0] <<" , "\
                                         << K_pdi[1] << " , " << K_pdi[2] << "} dp: {" <<dp[0] <<" , "\
-                                        << dp[1] << " , " << dp[2] << "}" << "\n";
-
+                                        << dp[1] << " , " << dp[2] << "}" << endl;
                 // Reset PID tuning variables
                 ResetTuning();
                 // Reset simulation
@@ -204,7 +203,7 @@ string PID::TwiddleTunning(json input, dual_stream &ds) {
                     // Modify step of constant by 1.1
                     dp[index_K] *= 1.1;
                     
-                    ds << "Iteration "<< iterations << " completed - Best error improved: "<< best_error << "\n";
+                    ds << "Iteration "<< iterations << " completed - Best error improved: "<< best_error << endl;
                     iterations += 1;
 
                     // Move to next constant
@@ -227,12 +226,12 @@ string PID::TwiddleTunning(json input, dual_stream &ds) {
                         K_pdi[index_K] -= 2*dp[index_K];
                         value_set[1] =  true;
                         // best_error wasn't changed. Print message to state that fact
-                        ds << "Iteration "<< iterations << " completed - Best error remains: "<< best_error << "\n";
+                        ds << "Iteration "<< iterations << " completed - Best error remains: "<< best_error << endl;
                         iterations += 1;
                         // Simulation start message
                         ds << "\nIteration starts -> Kpdi: {"<< K_pdi[0] <<" , "\
                                         << K_pdi[1] << " , " << K_pdi[2] << "} dp: {" <<dp[0] <<" , "\
-                                        << dp[1] << " , " << dp[2] << "}" << "\n";
+                                        << dp[1] << " , " << dp[2] << "}" << endl;
 
                         // Reset PID tuning variables
                         ResetTuning();
@@ -257,14 +256,14 @@ string PID::TwiddleTunning(json input, dual_stream &ds) {
                             // Modify step of constant by 1.1
                             dp[index_K] *= 1.1;
                             // best_error was improved in this iteration. Print message to state that fact
-                            ds << "Iteration "<< iterations << " completed - Best error improved: "<< best_error << "\n";
+                            ds << "Iteration "<< iterations << " completed - Best error improved: "<< best_error << endl;
                             iterations += 1;
                         } else {
                             // Increase K_pdi constant by dp at index_K
                             K_pdi[index_K] += dp[index_K];
                             // Modify step of constant by 0.9
                             dp[index_K] *= 0.9;
-                            ds << "Iteration "<< iterations << " completed - Best error remains: "<< best_error << "\n";
+                            ds << "Iteration "<< iterations << " completed - Best error remains: "<< best_error << endl;
                             iterations += 1;
                         }
 
@@ -290,7 +289,7 @@ string PID::TwiddleTunning(json input, dual_stream &ds) {
             
             // Tuning complete message
             ds << "Tuning Complete. Total iterations: "<< iterations<< ".\nSimulation starts -> Kpdi: {"<< K_pdi[0] <<" , "\
-                                        << K_pdi[1] << " , " << K_pdi[2] <<"}"<< "\n";
+                                        << K_pdi[1] << " , " << K_pdi[2] <<"}"<< endl;
             // Reset PID tuning variables                            
             ResetTuning();
             // Restart simulation
