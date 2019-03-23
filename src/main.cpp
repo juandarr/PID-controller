@@ -40,9 +40,9 @@ int main() {
 
   PID pid;
   //Initialize the pid variable.
-  //pid.Init({0.369406 , 10.9504 , 0.00453171});
+  pid.Init({0.369406 , 14.1166 , 0.00453171});
   // Use this initialization instead of the standard when you want to tune the PID constants with twiddle
-  pid.InitTuning({0.15, 7.0,0.003}, 100, 0.00002);
+  //pid.InitTuning({0.15, 7.0,0.003}, 100, 0.00002);
 
 
   dual_stream ds("datalog.txt");
